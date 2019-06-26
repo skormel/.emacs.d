@@ -1,4 +1,8 @@
-;; Time-stamp: <2017-12-02 13:19:18 csraghunandan>
+;;; setup-movement.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2018-08-15 03:04:38 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;; All the configuration related to movement in emacs
 
@@ -17,11 +21,9 @@ Try the repeated popping up to 10 times."
 
 ;; Horizontally scroll only the current line
 ;; https://www.reddit.com/r/emacs/comments/6au45k/is_it_possible_to_truncate_long_lines_the_same/
-(>=e "26.0"
-    (setq auto-hscroll-mode 'current-line))
+(setq auto-hscroll-mode 'current-line)
 
-(>=e "25.0"
-    (setq fast-but-imprecise-scrolling t))
+(setq fast-but-imprecise-scrolling t)
 
 ;; mwim: move to the beginning or end of line smartly
 ;; https://github.com/alezost/mwim.el
@@ -50,8 +52,8 @@ _S_: <- sentence    _A_: <- paragraph    _G_: <- page       _<_: beginning-of-bu
   ("b" backward-char)
   ("a" mwim-beginning-of-code-or-line-or-comment)
   ("e" mwim-end-of-code-or-line)
-  ("v" golden-ratio-scroll-screen-up)
-  ("V" golden-ratio-scroll-screen-down)
+  ("v" scroll-up)
+  ("V" scroll-down)
   ("F" forward-word)
   ("B" backward-word)
   ("l" recenter-top-bottom)
@@ -76,16 +78,22 @@ _S_: <- sentence    _A_: <- paragraph    _G_: <- page       _<_: beginning-of-bu
 ;; scroll half screen up or down and highlight current line before and after scrolling
 ;; https://github.com/jixiuf/golden-ratio-scroll-screen
 (use-package golden-ratio-scroll-screen
-  :config
-  (bind-key "C-v" #'golden-ratio-scroll-screen-up)
-  (bind-key "M-v" #'golden-ratio-scroll-screen-down))
+  :bind (("C-v" . golden-ratio-scroll-screen-up)
+         ("M-v" . golden-ratio-scroll-screen-down)))
 
 ;; dumb-jump: jump to definitions using `rg' or `ag'
 ;; https://github.com/jacktasia/dumb-jump
 (use-package dumb-jump
+  :hook ((prog-mode . dumb-jump-mode))
   :init
-  (setq dumb-jump-selector 'ivy)
-  (add-hook 'prog-mode-hook #'dumb-jump-mode))
+  (setq dumb-jump-selector 'ivy))
+
+;; A simple-minded way of managing window configs in emacs
+;; https://github.com/wasamasa/eyebrowse
+(use-package eyebrowse
+  :config
+  (eyebrowse-mode t)
+  (setq eyebrowse-mode-line-style nil))
 
 (setq recenter-positions '(0.50 0.07 0.93)) ;default: '(middle top bottom)
 ;; First C-l  -> 0.50: Put point vertically at the middle of the window

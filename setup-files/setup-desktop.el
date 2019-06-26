@@ -1,8 +1,12 @@
-;; Time-stamp: <2017-09-10 17:19:30 csraghunandan>
+;;; setup-desktop.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2018-08-15 02:50:17 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;; desktop: save the current emacs session
-(use-package desktop
-  :defer 2
+(use-package desktop :defer 2
+  :ensure nil
   :config
   (setq desktop-dirname (concat user-emacs-directory "desktop")
         desktop-base-file-name "emacs.desktop"
@@ -33,7 +37,6 @@
                   register-alist
                   (search-ring . 20)
                   (shell-command-history . 50)
-                  ivy-views
                   ;; tags-file-name
                   ;; tags-table-list
                   )))

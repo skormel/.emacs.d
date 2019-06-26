@@ -1,7 +1,12 @@
-;; TIme-stamp: <2017-01-05 15:49:39>
+;;; setup-eshell.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2018-08-15 02:56:27 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;; ehsell config
 (use-package eshell
+  :ensure nil
   :config
 
   (add-hook 'eshell-mode-hook
@@ -10,9 +15,6 @@
                :map eshell-mode-map
                ("<tab>" . completion-at-point)
                ("C-c M-o" . eshell-clear-buffer))))
-
-  ;; fetch the $PATH variable to eshell
-  (add-hook 'eshell-mode-hook '(lambda ()(exec-path-from-shell-initialize)))
 
   (defun eshell-clear-buffer ()
     "Clear terminal"

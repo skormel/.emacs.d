@@ -1,64 +1,40 @@
-;; Time-stamp: <2017-12-29 22:56:47 csraghunandan>
+;;; setup-company.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2019-01-31 11:52:03 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;; company, company-quickhelp, company-statistics
 
 ;; company: auto-completion backend for emacs
 ;; http://company-mode.github.io/
 (use-package company
-  :diminish company-mode
+  :bind
+  (("M-/" . hippie-expand) ;; replace `dabbrev-expand' with `hippie-expand' which does a lot more
+   ("C-<tab>" . company-dabbrev))
+  (:map company-active-map
+        ("M-p" . nil)
+        ("M-n" . nil)
+        ("C-m" . nil)
+        ("C-h" . nil)
+        ("C-n" . company-select-next)
+        ("C-p" . company-select-previous)
+        ("<tab>" . company-complete-common)
+        ("C-f" . company-complete-common)
+        ("C-t" . company-show-doc-buffer))
   :config
-  (bind-keys
-   :map company-active-map
-   ("M-p" . nil)
-   ("M-n" . nil)
-   ("C-m" . nil)
-   ("C-h" . nil)
-   ("C-n" . company-select-next)
-   ("C-p" . company-select-previous)
-   ("<tab>" . company-complete-common)
-   ("C-t" . company-show-doc-buffer))
-
-  ;; replace `dabbrev-expand' with `hippie-expand' which does a lot more
-  (bind-key "M-/" 'hippie-expand)
+  (setq company-tooltip-flip-when-above t)
+  (setq company-minimum-prefix-length 3)
+  (setq company-idle-delay 0.2)
+  (setq company-selection-wrap-around t)
+  (setq company-show-numbers t)
+  (setq company-require-match 'never)
+  (setq company-tooltip-align-annotations t)
 
   ;; don't downcase results from company-dabbrev
   (setq company-dabbrev-downcase nil)
   ;; use only buffers with same major-mode for company-dabbrev
   (setq company-dabbrev-other-buffers t)
-  (bind-key "C-<tab>" 'company-dabbrev)
-
-  (defun ora-company-number ()
-    "Forward to `company-complete-number'.
-Unless the number is potentially part of the candidate.
-In that case, insert the number."
-    (interactive)
-    (let* ((k (this-command-keys))
-           (re (concat "^" company-prefix k)))
-      (if (cl-find-if (lambda (s) (string-match re s))
-                      company-candidates)
-          (self-insert-command 1)
-        (company-complete-number
-         (if (equal k "0")
-             10
-           (string-to-number k))))))
-
-  (let ((map company-active-map))
-    (mapc (lambda (x) (define-key map (format "%d" x) 'ora-company-number))
-          (number-sequence 0 9))
-    (define-key map " " (lambda ()
-                          (interactive)
-                          (company-abort)
-                          (self-insert-command 1)))
-    (define-key map (kbd "<return>") nil))
-
-  ;; set defaults for company-mode
-  (setq company-tooltip-flip-when-above t
-        company-minimum-prefix-length 3
-        company-idle-delay 0.2
-        company-selection-wrap-around t
-        company-show-numbers t
-        company-require-match 'never
-        company-tooltip-align-annotations t)
 
   ;; Suspend page-break-lines-mode while company menu is active
   ;; (see https://github.com/company-mode/company-mode/issues/416)
@@ -74,13 +50,21 @@ In that case, insert the number."
       (page-break-lines-mode 1)))
 
   (add-hook 'company-completion-started-hook 'sanityinc/page-break-lines-disable)
-  (add-hook 'company-completion-finished-hook 'sanityinc/page-break-lines-maybe-reenable)
-  (add-hook 'company-completion-cancelled-hook 'sanityinc/page-break-lines-maybe-reenable)
+  (add-hook 'company-after-completion-hook 'sanityinc/page-break-lines-maybe-reenable))
 
-  ;; company-statistics: sort the company candidates by the statistics
-  ;; https://github.com/company-mode/company-statistics
-  (use-package company-statistics :defer 1
-    :config (company-statistics-mode)))
+;; company-prescient: Simple but effective sorting and filtering for Emacs.
+;; https://github.com/raxod502/prescient.el/tree/master
+(use-package company-prescient
+  :hook (company-mode . company-prescient-mode)
+  :config (prescient-persist-mode +1))
+
+;; company-quickhelp: documentation popup for company
+;; https://github.com/expez/company-quickhelp/tree/master
+(use-package company-quickhelp
+  :after company
+  :config
+  (when (is-linux-p)
+    (company-quickhelp-mode)))
 
 (provide 'setup-company)
 
@@ -89,7 +73,5 @@ In that case, insert the number."
 ;; `C-t' to view the documentation of the current completion candidate
 ;; `C-w' to jump to the source code of the completion candidate (does not work
 ;; with all major-modes)
-;; `C-g' to view the documentation of the current completion candidate in minibuffer
 ;; `M-/' to execute `hippie-expand'
-;; Press `0-9' to select that company candidate
 ;; Press any non matching character to quit company

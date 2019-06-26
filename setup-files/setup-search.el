@@ -1,4 +1,8 @@
-;; Time-stamp: <2017-02-12 13:23:52 csraghunandan>
+;;; setup-search.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2018-12-30 01:14:19 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;; isearch config
 
@@ -40,14 +44,15 @@ See the command `isearch-forward-symbol' for more information."
       (isearch-update)))))
 
 (bind-keys
- ("s-f" . isearch-forward-symbol-at-point)
- ("s-r" . rag/isearch-backward-symbol-at-point))
+ ("H-f" . isearch-forward-symbol-at-point)
+ ("H-r" . rag/isearch-backward-symbol-at-point))
 
 (bind-key "C-'" 'avy-isearch isearch-mode-map)
 
 ;; visual-regexp: A regexp/replace command for Emacs with interactive visual feedback
 ;; https://github.com/benma/visual-regexp.el
-(use-package visual-regexp)
+(use-package visual-regexp
+  :defer t)
 
 ;; visual-regexp-steroids: use modern regexp engines instead of emacs one.
 ;; https://github.com/benma/visual-regexp-steroids.el/
@@ -58,16 +63,15 @@ See the command `isearch-forward-symbol' for more information."
 
 ;; wgrep: Writable grep buffer and apply the changes to files
 ;; https://github.com/mhayashi1120/Emacs-wgrep
-(use-package wgrep)
+(use-package wgrep
+  :config (setq wgrep-auto-save-buffer t))
 
 ;;; anzu: show number of searches in isearch
 ;; https://github.com/syohex/emacs-anzu
 (use-package anzu
-  :diminish anzu-mode
+  :defer t
   :config
   (setq anzu-search-threshold 1000)
-  (setq anzu-replace-to-string-separator " => ")
-  (global-set-key [remap query-replace] 'anzu-query-replace)
   (global-anzu-mode +1))
 
 ;;; Query exchange

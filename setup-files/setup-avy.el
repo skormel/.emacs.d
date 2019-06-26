@@ -1,26 +1,38 @@
-;; Time-stamp: <2017-11-29 20:01:56 csraghunandan>
+;;; setup-avy.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2019-01-09 00:40:26 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;; avy: package for jumping to visible text using character based decision tree
 ;; https://github.com/abo-abo/avy
 (use-package avy
   :bind
-  (("C-`" . avy-goto-word-1)
-   ("C-'" . avy-goto-char-timer))
+  (("C-'" . avy-goto-char-timer)
+   ("M-g M-g" . avy-goto-line)
+   ("M-g [" . avy-goto-paren-open)
+   ("M-g ]" . avy-goto-paren-close))
+  :bind*
+  ("C-," . avy-goto-word-1)
   :config
+  (setq avy-style 'pre)
 
-  ;; use home row keys for avy jumps
-  (setq avy-keys-alist
-        `((avy-goto-char-timer . (?a ?s ?d ?f ?g ?h ?j ?k ?l))))
-  (setq avy-style 'pre))
+  (setq avy-indent-line-overlay t)
 
-;; avy-zap: Use avy frontend to yank till the match entered by user
-;; https://github.com/cute-jumper/avy-zap
-(use-package avy-zap
-  :bind (("M-z" . avy-zap-to-char-dwim)))
+  (defun avy-goto-paren-open ()
+    (interactive)
+    (avy--generic-jump "(\\|{\\|\\[" nil 'pre))
+
+  (defun avy-goto-paren-close ()
+    (interactive)
+    (avy--generic-jump ")\\|}\\|]" nil 'pre)))
 
 ;; ace-link: quickly traverse through links in info
 ;; https://github.com/abo-abo/ace-link
 (use-package ace-link
-  :config (ace-link-setup-default))
+  :config
+  (ace-link-setup-default))
 
 (provide 'setup-avy)
+
+;; z - avy action key to zap to character

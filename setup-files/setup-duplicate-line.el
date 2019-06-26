@@ -1,4 +1,8 @@
-;; Time-stamp: <2016-11-18 16:28:30 csraghunandan>
+;;; setup-duplicate-line.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2018-08-15 02:52:47 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;; duplicate line or region
 (defun duplicate-region (&optional num start end)

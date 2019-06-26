@@ -1,12 +1,15 @@
-;; Time-stamp: <2017-12-02 13:26:34 csraghunandan>
+;;; setup-help.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2018-12-14 01:50:44 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;; helpful: A better Emacs *help* buffer
 ;; https://github.com/Wilfred/helpful
 (use-package helpful
-  :bind
-  (("C-c e c" . helpful-command)
-   ("C-c e f" . helpful-function)
-   ("C-c e m" . helpful-macro)))
+  :bind*
+  (("C-h k" . helpful-key)
+   ("C-c C-." . helpful-at-point)))
 
 ;; more info in apropos
 (setq apropos-do-all t)

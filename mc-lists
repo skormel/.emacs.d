@@ -5,6 +5,7 @@
 (setq mc/cmds-to-run-for-all
       '(
         counsel-M-x
+        dired-mark
         eval-defun
         hungry-delete-backward
         hungry-delete-forward
@@ -13,7 +14,9 @@
         hydra-change-case/xah-cycle-letter-case
         indent-for-tab-command
         isearch-forward-symbol-at-point
+        ivy-occur-delete-candidate
         ivy-wgrep-change-to-wgrep-mode
+        kill-region
         mwim-beginning-of-code-or-line
         mwim-beginning-of-code-or-line-or-comment
         mwim-end-of-code-or-line
@@ -33,6 +36,7 @@
         sp-kill-sexp
         sp-kill-word
         sp-select-next-thing
+        sp-strict-kill-line-or-region
         sp-unwrap-sexp
         undefined
         wdired-finish-edit

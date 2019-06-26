@@ -1,7 +1,12 @@
-;; Time-stamp: <2017-02-08 11:26:23 csraghunandan>
+;;; setup-ediff.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2018-08-15 02:54:51 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;; ediff: show the difference between two files intearctively
 (use-package ediff
+  :ensure nil
   :config
   ;; No separate frame for ediff control buffer
   (setq ediff-window-setup-function #'ediff-setup-windows-plain)

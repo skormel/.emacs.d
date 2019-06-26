@@ -1,16 +1,20 @@
-;; Time-stamp: <2017-08-16 00:19:17 csraghunandan>
+;;; setup-smartparens.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2018-08-15 03:08:12 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;; smartparens: for movement, editing and inserting parenthesis
 ;; https://github.com/Fuco1/smartparens
 (use-package smartparens
-  :diminish (smartparens-mode . "𝐬")
   :config
   (setq sp-ignore-modes-list (quote (minibuffer-inactive-mode
-                                     web-mode
-                                     org-mode
                                      Info-mode
                                      term-mode
-                                     org-journal-mode)))
+                                     org-mode
+                                     org-journal-mode
+                                     markdown-mode
+                                     ivy-occur-mode)))
 
   ;; macro to wrap the current sexp at point
   (defmacro def-pairs (pairs)
@@ -61,10 +65,7 @@
    ("M-F" . sp-forward-symbol)
    ("M-B" . sp-backward-symbol)
 
-   ("C-k" . sp-kill-hybrid-sexp)
-   ("M-k" . sp-kill-whole-line)
    ("C-c R" . sp-rewrap-sexp)
-
    ("M-[" . sp-backward-unwrap-sexp)
    ("M-]" . sp-unwrap-sexp)
 
@@ -78,12 +79,11 @@
    ("C-c \"" . wrap-with-double-quotes)
    ("C-c `" . wrap-with-back-quotes))
 
-  (show-smartparens-global-mode +1)
-
   ;; enable smartparens globally
   (smartparens-global-mode)
   (smartparens-global-strict-mode) ; only allows you to insert or delete
                                    ; brackets in pairs
+  (show-smartparens-global-mode +1)
 
   (require 'smartparens-config)
 
@@ -140,7 +140,16 @@ _t_: transpose      _T_: hyb-transpose    _q_: quit
   (setq sp-show-pair-delay 0.1)
 
   ;; no more pair mismatch messages
-  (setq sp-message-width nil))
+  (setq sp-message-width nil)
+
+  (defun sp-strict-kill-line-or-region (&optional arg)
+    "Kill active region or current line."
+    (interactive "p")
+    (if (use-region-p)
+        (sp-kill-region (region-beginning) (region-end))
+      (sp-kill-whole-line)))
+
+  (bind-key* "C-w" #'sp-strict-kill-line-or-region smartparens-mode-map))
 
 (provide 'setup-smartparens)
 

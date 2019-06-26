@@ -1,4 +1,8 @@
-;; Time-stamp: <2017-12-02 13:33:10 csraghunandan>
+;;; setup-editing.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2019-04-02 09:56:21 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;;; configuration for all the editing stuff in emacs
 ;; Kill ring
@@ -65,7 +69,7 @@ the comment characters from the joined line."
 
 (bind-keys
  ("M-j" . rag/pull-up-line)
- ("s-j" . rag/push-up-line))
+ ("H-j" . rag/push-up-line))
 
 (defun rag/smart-open-line ()
   "Insert an empty line after the current line.
@@ -92,7 +96,6 @@ Position the cursor at it's beginning, according to the current mode."
 ;; operate on current line if no region is defined
 ;; https://github.com/purcell/whole-line-or-region/blob/master/whole-line-or-region.el
 (use-package whole-line-or-region
- :diminish whole-line-or-region-mode
  :config (whole-line-or-region-global-mode))
 
 
@@ -142,7 +145,7 @@ Position the cursor at it's beginning, according to the current mode."
       (indicate-copied-region (length (car killed-rectangle)))))
 
 ;; expand-region: expand region semantically
-;; https://www.emacswiki.org/emacs/GotoChg
+;; https://github.com/magnars/expand-region.el/tree/f99b7630efcdb47c9c6182489c55fba3bcaee521
 (use-package expand-region
   :bind ("C-=" . er/expand-region)
   :config
@@ -151,11 +154,14 @@ Position the cursor at it's beginning, according to the current mode."
 
 ;; subword: subword movement and editing for camelCase
 (use-package subword
-  :diminish subword-mode
+  :ensure nil
+  :defer 1
   :config (global-subword-mode))
 
 ;; save-place: save cursor position when buffer is killed
 (use-package saveplace
+  :ensure nil
+  :defer 2
   :config (save-place-mode))
 
 
@@ -237,9 +243,6 @@ abc |ghi        <-- point still after white space after calling this function."
         (t ; do nothing otherwise, includes the case where the point is at EOL
          )))
 ;; Delete extra horizontal white space after `kill-word' and `backward-kill-word'
-(advice-add 'sp-kill-word :after #'modi/just-one-space-post-kill-word)
-(advice-add 'sp-backward-kill-word :after #'modi/just-one-space-post-kill-word)
-(advice-add 'sp-kill-sexp :after #'modi/just-one-space-post-kill-word)
 (advice-add 'kill-word :after #'modi/just-one-space-post-kill-word)
 (advice-add 'backward-kill-word :after #'modi/just-one-space-post-kill-word)
 
@@ -316,7 +319,6 @@ _c_apitalize        _U_PCASE        _d_owncase        _<SPC>_ →Cap→UP→down
                             rust-mode
                             web-mode
                             css-mode
-                            python-mode
                             c++-mode
                             c-mode
                             racket-mode
@@ -357,19 +359,16 @@ _c_apitalize        _U_PCASE        _d_owncase        _<SPC>_ →Cap→UP→down
 
 (bind-keys
  ("C-c o s" . cycle-spacing)
- ("C-h" . delete-backward-char)
- ("C-M-h" . backward-kill-word)
  ("M-;" . comment-line)
  ("C-c o o" . xah-clean-whitespace))
 
 ;; configuration for auto-fill-mode
 (use-package simple :ensure nil
-  :diminish auto-fill-function
+  :chords ((",m" . beginning-of-buffer)
+           (",." . end-of-buffer))
+  :hook ((prog-mode text-mode org-mode) . auto-fill-mode)
   :config
-  (setq comment-auto-fill-only-comments t)
-  (add-hook 'prog-mode-hook 'auto-fill-mode)
-  (add-hook 'text-mode-hook 'auto-fill-mode)
-  (add-hook 'org-mode-hook 'auto-fill-mode))
+  (setq comment-auto-fill-only-comments t))
 
 (defun indent-buffer ()
   "Indent the currently visited buffer."
@@ -492,12 +491,9 @@ Version 2017-01-11"
 (use-package move-text
   :config (move-text-default-bindings))
 
-;; undo-tree: Treat undo history as a tree
-;; https://www.emacswiki.org/emacs/UndoTree
+;; undo-tree: tree like navigation for undo/redo in emacs
 (use-package undo-tree
-  :diminish undo-tree-mode
-  :bind (("s-/" . undo-tree-redo))
-  :init (global-undo-tree-mode))
+  :config (global-undo-tree-mode 1))
 
 ;; utf-8 everywhere
 (set-language-environment 'utf-8)
@@ -507,6 +503,9 @@ Version 2017-01-11"
 (unless (eq system-type 'windows-nt)
   (set-selection-coding-system 'utf-8))
 (prefer-coding-system 'utf-8)
+(setq-default buffer-file-coding-system 'utf-8)
+(when (fboundp 'set-charset-priority)
+  (set-charset-priority 'unicode)) ; pretty
 
 ;; smart-dash: underscores without having to press shift modifier for dash key
 (use-package smart-dash
@@ -575,5 +574,28 @@ associated with the original non-sudo filename."
     (back-to-indentation)
     (kill-region (point) prev-pos)))
 (bind-key "C-S-K" #'kill-back-to-indentation)
+
+;; hungry-delete: deleting a whitespace character will delete all whitespace
+;; until the next non-whitespace character
+;; https://github.com/nflath/hungry-delete
+(use-package hungry-delete
+  :config
+  (global-hungry-delete-mode)
+  (add-to-list 'hungry-delete-except-modes 'wdired-mode)
+  (add-to-list 'hungry-delete-except-modes 'ivy-occur-mode))
+
+;; poporg is a small Emacs Lisp project to help editing program strings and
+;; comments using Org mode (or any other major mode).  This can be useful as it
+;; is often more convenient to edit large pieces of text, like Emacs Lisp or
+;; Python docstrings, in an org-mode buffer instead of in a comment or a string.
+;; https://github.com/QBobWatson/poporg
+(use-package poporg
+  :bind (("C-c o p" . poporg-dwim)))
+
+;; adaptive-wrap: Smart line-wrapping with wrap-prefix
+;; https://github.com/emacsmirror/adaptive-wrap/blob/master/adaptive-wrap.el
+(use-package adaptive-wrap
+  :hook (visual-line-mode . adaptive-wrap-prefix-mode)
+  :config (setq-default adaptive-wrap-extra-indent 2))
 
 (provide 'setup-editing)

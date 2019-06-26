@@ -1,171 +1,231 @@
-;; Timestamp: <2017-07-22 13:53:13>
+;;; setup-cc.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2018-12-13 23:15:23 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
+
 ;; all the configuration for C/C++ projects
 
-;;; features:
-;; Source code navigation using RTags
-;; Source code completion using Irony
-;; Syntax checking with Flycheck
-;; CMake automation with cmake-ide
-;; C/C++ code disassembler using disaster
-;; modern C++ font-lock support
-
-(use-package cc-mode :defer t
+;; cmake-font-lock: emacs font lock rules for CMake
+;; https://github.com/Lindydancer/cmake-font-lock
+(use-package cmake-font-lock
   :config
+  (autoload 'cmake-font-lock-activate "cmake-font-lock" nil t)
+  (add-hook 'cmake-mode-hook 'cmake-font-lock-activate))
 
-  ;; A c/c++ client/server indexer for c/c++/objc[++] with integration for Emacs
-  ;; based on clang.
-  ;; https://github.com/Andersbakken/rtags
-  (use-package rtags :defer t
-    :config
+;; adds font-lock highlighting for modern C++ upto C++17
+;; https://github.com/ludwigpacifici/modern-cpp-font-lock
+(use-package modern-cpp-font-lock
+  :hook (c++-mode . modern-c++-font-lock-mode))
 
-    (rtags-enable-standard-keybindings)
+;; ccls: Emacs client for ccls, a C/C++ language server
+;; https://github.com/MaskRay/emacs-ccls
+(use-package ccls
+  :commands (lsp-css-enable)
+  :init
+;;;###autoload
+  (defvar +ccls-path-mappings [])
 
-    ;; ivy completion frontend for rtags
-    (use-package ivy-rtags
-      :config
-      (setq rtags-display-result-backend 'ivy))
+;;;###autoload
+  (defvar +ccls-initial-blacklist [])
 
-    ;; start the rtags process automatically if it's not started
-    ;; (add-hook 'c-mode-hook 'rtags-start-process-unless-running)
-    ;; (add-hook 'c++-mode-hook 'rtags-start-process-unless-running)
-    )
+  (setq ccls-executable (executable-find "ccls"))
 
-  ;; cmake-ide: Use Emacs as a C/C++ IDE
-  ;; https://github.com/atilaneves/cmake-ide
-  ;; (use-package cmake-ide
-  ;;   :config (cmake-ide-setup))
+  (setq
+   ccls-extra-init-params
+   `(:clang (:pathMappings ,+ccls-path-mappings)
+            :completion
+            (:include
+             (:blacklist
+              ["^/usr/(local/)?include/c\\+\\+/[0-9\\.]+/(bits|tr1|tr2|profile|ext|debug)/"
+               "^/usr/(local/)?include/c\\+\\+/v1/"
+               ]))
+            :index (:initialBlacklist ,+ccls-initial-blacklist :trackDependency 1)))
+  :config
+  ;; enable ccls semantic highlighting
+  (setq ccls-sem-highlight-method 'font-lock)
 
-  ;; cmake-mode: major-mode for editing cmake files
-  (use-package cmake-mode :defer t
-    :config
-    ;; cmake-font-lock: emacs font lock rules for CMake
-    ;; https://github.com/Lindydancer/cmake-font-lock
-    (use-package cmake-font-lock
-      :config
-      (autoload 'cmake-font-lock-activate "cmake-font-lock" nil t)
-      (add-hook 'cmake-mode-hook 'cmake-font-lock-activate)))
+  (with-eval-after-load 'projectile
+    (add-to-list 'projectile-globally-ignored-directories ".ccls-cache"))
 
-  ;; irony: A C/C++ minor mode for Emacs powered by libclang
-  ;; https://github.com/Sarcasm/irony-mode
-  (use-package irony
-    :config
-    ;; company backend for irony completion server
-    ;; https://github.com/Sarcasm/company-irony
-    (use-package company-irony)
-    ;; completions for C/C++ header files
-    ;; https://github.com/hotpxl/company-irony-c-headers
-    (use-package company-irony-c-headers)
+  ;; https://github.com/MaskRay/Config/blob/master/home/.config/doom/modules/private/my-cc/autoload.el#L10
+  (defun ccls/callee ()
+    (interactive)
+    (lsp-ui-peek-find-custom "$ccls/call" '(:callee t)))
+  (defun ccls/caller ()
+    (interactive)
+    (lsp-ui-peek-find-custom "$ccls/call"))
+  (defun ccls/vars (kind)
+    (lsp-ui-peek-find-custom "$ccls/vars" `(:kind ,kind)))
+  (defun ccls/base (levels)
+    (lsp-ui-peek-find-custom "$ccls/inheritance" `(:levels ,levels)))
+  (defun ccls/derived (levels)
+    (lsp-ui-peek-find-custom "$ccls/inheritance" `(:levels ,levels :derived t)))
+  (defun ccls/member (kind)
+    (lsp-ui-peek-find-custom "$ccls/member" `(:kind ,kind)))
 
-    (defun my-irony-mode-hook ()
-      (define-key irony-mode-map [remap completion-at-point]
-        'irony-completion-at-point-async)
-      (define-key irony-mode-map [remap complete-symbol]
-        'irony-completion-at-point-async))
+  ;; The meaning of :role corresponds to https://github.com/maskray/ccls/blob/master/src/symbol.h
+  ;; References w/ Role::Address bit (e.g. variables explicitly being taken addresses)
+  (defun ccls/references-address ()
+    (interactive)
+    (lsp-ui-peek-find-custom "textDocument/references"
+                             (plist-put (lsp--text-document-position-params) :role 128)))
 
-    (add-hook 'irony-mode-hook 'my-irony-mode-hook)
-    (add-hook 'irony-mode-hook 'irony-cdb-autosetup-compile-options)
+  ;; References w/ Role::Dynamic bit (macro expansions)
+  (defun ccls/references-macro ()
+    (interactive)
+    (lsp-ui-peek-find-custom "textDocument/references"
+                             (plist-put (lsp--text-document-position-params) :role 64)))
 
-    (add-hook 'irony-mode-hook 'company-irony-setup-begin-commands)
-    (setq company-backends (delete 'company-semantic company-backends))
+  ;; References w/o Role::Call bit (e.g. where functions are taken addresses)
+  (defun ccls/references-not-call ()
+    (interactive)
+    (lsp-ui-peek-find-custom "textDocument/references"
+                             (plist-put (lsp--text-document-position-params) :excludeRole 32)))
 
-    (defun my-c-mode-hook ()
-      (set (make-local-variable 'company-backends)
-           '((company-irony-c-headers company-irony company-files company-yasnippet))))
+  ;; References w/ Role::Read
+  (defun ccls/references-read ()
+    (interactive)
+    (lsp-ui-peek-find-custom "textDocument/references"
+                             (plist-put (lsp--text-document-position-params) :role 8)))
 
-    (add-hook 'c++-mode-hook #'my-c-mode-hook)
-    (add-hook 'c-mode-hook #'my-c-mode-hook)
+  ;; References w/ Role::Write
+  (defun ccls/references-write ()
+    (interactive)
+    (lsp-ui-peek-find-custom "textDocument/references"
+                             (plist-put (lsp--text-document-position-params) :role 16)))
 
-    (use-package flycheck-irony
-      :config
-      (defun +cc|init-c++14-clang-options ()
-        (make-local-variable 'irony-additional-clang-options)
-        (cl-pushnew "-std=c++14" irony-additional-clang-options :test 'equal))
-      (add-hook 'c++-mode-hook #'+cc|init-c++14-clang-options)
+  (add-hook 'lsp-after-open-hook #'ccls-code-lens-mode))
 
-      (eval-after-load 'flycheck
-        '(add-hook 'flycheck-mode-hook #'flycheck-irony-setup)))
+(defun ccls//enable ()
+  "Enable lsp-ccls"
+  (require 'ccls)
+  (lsp))
 
-    ;; irony-eldoc: eldoc support for irony
-    ;; https://github.com/ikirill/irony-eldoc
-    (use-package irony-eldoc
-      :config (add-hook 'irony-mode-hook #'irony-eldoc)))
-
-  (defun +cc|extra-fontify-c++ ()
-    ;; We could place some regexes into `c-mode-common-hook', but
-    ;; note that their evaluation order matters.
-    ;; NOTE modern-cpp-font-lock will eventually supercede some of these rules
-    (font-lock-add-keywords
-     nil '(;; c++11 string literals
-           ;;       L"wide string"
-           ;;       L"wide string with UNICODE codepoint: \u2018"
-           ;;       u8"UTF-8 string", u"UTF-16 string", U"UTF-32 string"
-           ("\\<\\([LuU8]+\\)\".*?\"" 1 font-lock-keyword-face)
-           ;;       R"(user-defined literal)"
-           ;;       R"( a "quot'd" string )"
-           ;;       R"delimiter(The String Data" )delimiter"
-           ;;       R"delimiter((a-z))delimiter" is equivalent to "(a-z)"
-           ("\\(\\<[uU8]*R\"[^\\s-\\\\()]\\{0,16\\}(\\)" 1 font-lock-keyword-face t) ; start delimiter
-           (   "\\<[uU8]*R\"[^\\s-\\\\()]\\{0,16\\}(\\(.*?\\))[^\\s-\\\\()]\\{0,16\\}\"" 1 font-lock-string-face t)  ; actual string
-           (   "\\<[uU8]*R\"[^\\s-\\\\()]\\{0,16\\}(.*?\\()[^\\s-\\\\()]\\{0,16\\}\"\\)" 1 font-lock-keyword-face t) ; end delimiter
-           ) t))
-
-  (add-hook 'c++-mode-hook #'+cc|extra-fontify-c++) ; fontify C++11 string literals
-
-  ;; adds font-lock highlighting for modern C++ upto C++17
-  (use-package modern-cpp-font-lock
-    :config (modern-c++-font-lock-global-mode t))
-
-  ;; clang-format: format C/C++ files using clang-format
-  (use-package clang-format
-    :if (executable-find "clang-format")
-    :config
-    (add-hook 'c++-mode-hook
-              (lambda ()
-                (add-hook 'before-save-hook
-                          (lambda ()
-                            (time-stamp)
-                            (clang-format-buffer)) nil t)))
-    (add-hook 'c-mode-hook
-              (lambda ()
-                (add-hook 'before-save-hook
-                          (lambda ()
-                            (time-stamp)
-                            (clang-format-buffer)) nil t))))
-
-  ;; configure autocompletions for C/C++ using irony
-  (add-hook 'c++-mode-hook 'company-mode)
-  (add-hook 'c-mode-hook 'company-mode)
-  (add-hook 'c++-mode-hook 'irony-mode)
-  (add-hook 'c-mode-hook 'irony-mode)
-
-  (add-hook 'c++-mode-hook 'flycheck-mode)
-  (add-hook 'c-mode-hook 'flycheck-mode)
-
-  (add-hook 'c++-mode-hook 'smart-dash-mode)
-  (add-hook 'c-mode-hook 'smart-dash-mode)
-
-  ;; https://github.com/Fuco1/smartparens/issues/815
-  ;; remove this once this issue is fixed for emacs master
-  (>=e "26.0"
-      (sp-local-pair 'c-mode "'" nil :actions nil))
-  (>=e "26.0"
-      (sp-local-pair 'c++-mode "'" nil :actions nil))
-
+(use-package cc-mode :ensure nil
+  :hook (((c++-mode c-mode) . (lambda ()
+                                (ccls//enable)
+                                (eldoc-mode)
+                                (lsp-ui-sideline-mode)
+                                (flycheck-mode)
+                                (smart-dash-mode)
+                                (company-mode)))
+         ((c-mode c++-mode) . (lambda ()
+                                (add-hook 'before-save-hook
+                                          (lambda ()
+                                            (time-stamp)
+                                            (lsp-format-buffer)) nil t))))
+  :init
   (c-add-style "llvm"
                '("gnu"
-	         (fill-column . 80)
-	         (c++-indent-level . 4)
-	         (c-basic-offset . 4)
-	         (indent-tabs-mode . nil)
-	         (c-offsets-alist . ((arglist-intro . ++)
-				     (innamespace . 0)
-				     (member-init-intro . ++)))))
+                 (fill-column . 80)
+                 (c++-indent-level . 4)
+                 (c-basic-offset . 4)
+                 (indent-tabs-mode . nil)
+                 (c-offsets-alist . ((arglist-intro . ++)
+                                     (innamespace . 0)
+                                     (member-init-intro . ++)))))
+  (setq c-default-style "llvm")
 
-  (setq-default c-default-style "llvm"))
+  :config
+
+  (defun my-cc-common-mode-hook()
+    (set (make-local-variable 'company-backends)
+         '((company-lsp company-files :with company-yasnippet)
+           (company-dabbrev-code company-dabbrev))))
+  (add-hook 'c++-mode-hook #'my-cc-common-mode-hook)
+  (add-hook 'c-mode-hook #'my-cc-common-mode-hook)
+
+  (add-hook 'c++-mode-hook (lambda ()
+                             (setq-local company-transformers nil)
+                             (setq-local company-lsp-async t)
+                             (setq-local company-lsp-cache-candidates nil)))
+  (add-hook 'c-mode-hook (lambda ()
+                           (setq-local company-transformers nil)
+                           (setq-local company-lsp-async t)
+                           (setq-local company-lsp-cache-candidates nil)))
+
+  ;;;###autoload
+  (defun +cc|fontify-constants ()
+    "Better fontification for preprocessor constants"
+    (when (memq major-mode '(c-mode c++-mode))
+      (font-lock-add-keywords
+       nil '(("\\<[A-Z]*_[A-Z_]+\\>" . font-lock-constant-face)
+             ("\\<[A-Z]\\{3,\\}\\>"  . font-lock-constant-face))
+       t)))
+
+  (sp-with-modes '(c-mode c++-mode)
+    (sp-local-pair "/*" "*/" :post-handlers '(("||\n[i]" "RET") ("| " "SPC")))
+    ;; Doxygen blocks
+    (sp-local-pair "/**" "*/" :post-handlers '(("||\n[i]" "RET") ("||\n[i]" "SPC")))
+    (sp-local-pair "/*!" "*/" :post-handlers '(("||\n[i]" "RET") ("[d-1]< | " "SPC"))))
+
+  (defun +cc--re-search-for (regexp)
+    (save-excursion
+      (save-restriction
+        (save-match-data
+          (widen)
+          (goto-char (point-min))
+          (re-search-forward regexp magic-mode-regexp-match-limit t)))))
+
+  (defun +cc-c-c++-objc-mode (&optional file)
+    "Sets either `c-mode', `objc-mode' or `c++-mode', whichever is appropriate."
+    (let ((base (file-name-sans-extension buffer-file-name))
+          file)
+      (cond ((file-exists-p! (or (concat base ".cpp")
+                                 (concat base ".cc")))
+             (c++-mode))
+            ((or (file-exists-p! (or (concat base ".m")
+                                     (concat base ".mm")))
+                 (+cc--re-search-for
+                  (concat "^[ \t\r]*\\(?:"
+                          "@\\(?:class\\|interface\\|property\\|end\\)\\_>"
+                          "\\|#import +<Foundation/Foundation.h>"
+                          "\\|[-+] ([a-zA-Z0-9_]+)"
+                          "\\)")))
+             (objc-mode))
+            ((fboundp 'c-or-c++-mode) ; introduced in Emacs 26.1
+             (c-or-c++-mode))
+            ((+cc--re-search-for  ; TODO Remove this along with Emacs 25 support
+              (let ((id "[a-zA-Z0-9_]+") (ws "[ \t\r]+") (ws-maybe "[ \t\r]*"))
+                (concat "^" ws-maybe "\\(?:"
+                        "using"     ws "\\(?:namespace" ws "std;\\|std::\\)"
+                        "\\|" "namespace" "\\(:?" ws id "\\)?" ws-maybe "{"
+                        "\\|" "class"     ws id ws-maybe "[:{\n]"
+                        "\\|" "template"  ws-maybe "<.*>"
+                        "\\|" "#include"  ws-maybe "<\\(?:string\\|iostream\\|map\\)>"
+                        "\\)")))
+             (c++-mode))
+            ((c-mode)))))
+
+  ;; https://github.com/hlissner/doom-emacs/blob/develop/modules/lang/cc/
+  ;; Activate `c-mode', `c++-mode' or `objc-mode' depending on heuristics
+  (add-to-list 'auto-mode-alist '("\\.h\\'" . +cc-c-c++-objc-mode)))
+
+;; highlight doxygen comments in Emacs, including code blocks
+;; https://github.com/Lindydancer/highlight-doxygen/tree/master
+(use-package highlight-doxygen
+  :hook ((c-mode c++-mode) . highlight-doxygen-mode))
+
+;; Major mode for editing QT Declarative (QML) code.
+;; https://github.com/coldnew/qml-mode
+(use-package qml-mode
+  :mode ("\\.qml$" . qml-mode))
 
 (provide 'setup-cc)
 
-;;; notes
-;; To have cmake-ide automatically create a compilation commands file in your
-;; project root create a .dir-locals.el containing the following:
-;; ((nil . ((cmake-ide-build-dir . "<PATH_TO_PROJECT_BUILD_DIRECTORY>"))))
+;; (ccls-xref-find-custom "$ccls/base")
+;; (ccls-xref-find-custom "$ccls/callers")
+;; Use lsp-goto-implementation or lsp-ui-peek-find-implementation for derived types/functions
+;; (ccls-xref-find-custom "$ccls/vars")
+
+;; ;; Alternatively, use lsp-ui-peek interface
+;; (lsp-ui-peek-find-custom 'base "$ccls/base")
+;; (lsp-ui-peek-find-custom 'callers "$ccls/callers")
+;; (lsp-ui-peek-find-custom 'random "$ccls/random") ;; jump to a random declaration
+
+;; (ccls-member-hierarchy)
+;; (ccls-call-hierarchy nil) ; caller hierarchy
+;; (ccls-call-hierarchy t) ; callee hierarchy
+;; (ccls-inheritance-hierarchy nil) ; base hierarchy
+;; (ccls-inheritance-hierarchy t) ; derived hierarchy

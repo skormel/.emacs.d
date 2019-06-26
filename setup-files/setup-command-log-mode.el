@@ -1,4 +1,8 @@
-;; Time-stamp: <2017-12-02 12:58:30 csraghunandan>
+;;; setup-command-log-mode.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2018-08-15 02:44:27 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;; Command Log Mode: log all commands in a buffer or all buffers
 ;; https://github.com/lewang/command-log-mode
@@ -30,3 +34,6 @@
      ("q" nil "cancel" :color blue))))
 
 (provide 'setup-command-log-mode)
+
+;; there is also `view-lossage' commands which shows all the commands entered
+;; till the execution of `view-lossage'

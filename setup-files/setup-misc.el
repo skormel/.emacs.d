@@ -1,4 +1,8 @@
-;; Time-stamp: <2017-12-02 13:28:17 csraghunandan>
+;;; setup-misc.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2019-03-20 00:18:16 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 (defun my/package-upgrade-packages (&optional no-fetch)
   "Upgrade all packages.  No questions asked.
@@ -17,7 +21,8 @@ not prevent downloading the actual packages (obviously)."
 
 ;; to list all the keys-chord not bound to a command
 ;; https://github.com/Fuco1/free-keys
-(use-package free-keys)
+(use-package free-keys
+  :defer t)
 
 ;; enable disabled commands
 (setq disabled-command-function nil)
@@ -27,9 +32,9 @@ not prevent downloading the actual packages (obviously)."
 
 ;; default idle delay for eldoc is way too long
 (setq eldoc-idle-delay 0.1
-      eldoc-echo-area-use-multiline-p nil)
+      eldoc-echo-area-use-multiline-p t)
 
-(bind-key* "C-?" 'help-command)
+(setq delete-by-moving-to-trash t)
 
 ;; echo commands as I type
 (setq echo-keystrokes 0.01)
@@ -38,7 +43,7 @@ not prevent downloading the actual packages (obviously)."
 ;; garbage collect when focus out
 (add-hook 'focus-out-hook 'garbage-collect)
 ;; make links clickable
-(add-hook 'prog-mode-hook 'goto-address-mode)
+(add-hook 'prog-mode-hook 'goto-address-prog-mode)
 
 (defun conditional-disable-modes ()
   ;; disable heavy minor modes if file is large (above 2MB)
@@ -48,13 +53,32 @@ not prevent downloading the actual packages (obviously)."
     (highlight-indent-guides-mode -1)))
 (add-hook 'prog-mode-hook 'conditional-disable-modes)
 
-;; google-this : google line, region, symbol, etc.
-;; https://github.com/Malabarba/emacs-google-this
-(use-package google-this
-  :diminish google-this-mode
-  :config (google-this-mode 1))
+;; for when you want to disable the mouse
+;; https://github.com/purcell/disable-mouse/tree/master
+(use-package disable-mouse
+  :hook ((prog-mode . disable-mouse-mode)
+         (magit-mode . disable-mouse-mode)
+         (minibuffer-setup . disable-mouse-mode)))
 
 ;; prefer new files if one exists while loading
 (setq load-prefer-newer t)
+
+;; regex-tool: A regular expression IDE for Emacs, to help with the creation and testing of regular expressions.
+;; https://github.com/jwiegley/regex-tool
+(use-package regex-tool
+  :defer t)
+
+(defun rag-suspend-frame ()
+  "In a GUI environment, do nothing; otherwise `suspend-frame'."
+  (interactive)
+  (if (display-graphic-p)
+      (message "suspend-frame disabled for graphical displays.")
+    (suspend-frame)))
+
+(global-unset-key (kbd "C-z"))
+(bind-key "C-z C-z" 'rag-suspend-frame)
+
+;; use super-q to kill emacs. Useful when running emacs via emacsclient
+(bind-key "s-q" #'kill-emacs)
 
 (provide 'setup-misc)

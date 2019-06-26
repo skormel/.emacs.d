@@ -1,21 +1,28 @@
-;; TIme-stamp: <2017-05-01 17:31:30>
+;;; setup-font-check.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2019-04-07 18:41:49 csraghunandan>
 
-;; set PragmataPro font only if it available
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
+
+;; set Iosevka font only if it available
 (defun rag-set-face (frame)
   "Configure faces on frame creation"
   (select-frame frame)
   (if (display-graphic-p)
       (progn
-        (when (member "PragmataPro" (font-family-list))
+        (when (member "Iosevka SS08" (font-family-list))
           (progn
-            (require 'setup-pragmatapro)
-            (set-frame-font "PragmataPro-13"))))))
-(add-hook 'after-make-frame-functions 'rag-set-face)
+            (if (is-linux-p)
+                (set-frame-font "Iosevka SS08-10" nil t)
+              (set-frame-font "Iosevka SS08-12" nil t)))))))
+
+(add-hook 'after-make-frame-functions #'rag-set-face)
 
 ;; set frame font when running emacs normally
-(when (member "PragmataPro" (font-family-list))
+(when (member "Iosevka" (font-family-list))
   (progn
-    (require 'setup-pragmatapro)
-    (set-frame-font "PragmataPro-13")))
+    (if (is-linux-p)
+        (set-frame-font "Iosevka SS08-10" nil t)
+      (set-frame-font "Iosevka SS08-12" nil t))))
 
-(provide 'setup-font-check)
+  (provide 'setup-font-check)

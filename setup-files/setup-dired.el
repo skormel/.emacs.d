@@ -1,12 +1,27 @@
-;; -*- lexical-binding: t -*-
-;; Time-stamp: <2017-12-03 13:01:23 csraghunandan>
+;;; setup-dired.el -*- lexical-binding: t -*-
+;; Time-stamp: <2019-02-15 19:47:23 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;; dired: file system manager for emacs
 (use-package dired :ensure nil
-  :bind (:map dired-mode-map
-              ("S" . ora-dired-get-size))
+  :bind (("C-c r d" . bjm/ivy-dired-recent-dirs)
+         (:map dired-mode-map
+               ("S" . ora-dired-get-size)
+               ("E" . ora-ediff-files)
+               ("^" . rag/dired-up-dir)
+               ("C-a" . dired-back-to-start-of-files)))
   :config
   (progn
+    ;; follow symlinks in dired
+    (setq find-file-visit-truename t)
+
+    ;; C-a is nicer in dired if it moves back to start of files
+    (defun dired-back-to-start-of-files ()
+      (interactive)
+      (backward-char (- (current-column) 2)))
+
     ;; mark symlinks
     (setq dired-ls-F-marks-symlinks t)
     ;; Never prompt for recursive copies of a directory
@@ -15,6 +30,9 @@
     (setq dired-recursive-deletes 'always)
     ;; makes dired guess the target directory
     (setq dired-dwim-target t)
+
+    (>=e "27.0"
+        (setq dired-create-destination-dirs t))
 
     ;; Dired listing switches
     ;;  -a : Do not ignore entries starting with .
@@ -39,309 +57,117 @@ It added extra strings at the front and back of the default dired buffer name."
 
     (add-hook 'dired-mode-hook #'rag/dired-rename-buffer-name))
 
-  ;; dired-quick-sort: hydra to sort files in dired
-  ;; Press `S' to invoke dired-quick-sort hydra
-  ;; https://gitlab.com/xuhdev/dired-quick-sort
-  (use-package dired-quick-sort
-    :bind (:map dired-mode-map
-                ("s" . hydra-dired-quick-sort/body)))
-
-  (defvar du-program-name (executable-find "du"))
+  ;;* rest
   (defun ora-dired-get-size ()
-    "Get the size of a folder recursively"
     (interactive)
-    (let ((files (dired-get-marked-files)))
-      (with-temp-buffer
-        (apply 'call-process du-program-name nil t nil "-sch" files)
-        (message
-         "Size of all marked files: %s"
-         (progn
-           (re-search-backward "\\(^[ 0-9.,]+[A-Za-z]+\\).*total$")
-           (match-string 1))))))
+    (let* ((cmd (concat "du -sch "
+                        (mapconcat (lambda (x) (shell-quote-argument (file-name-nondirectory x)))
+                                   (dired-get-marked-files) " ")))
+           (res (shell-command-to-string cmd)))
+      (if (string-match "\\(^[ 0-9.,]+[A-Za-z]+\\).*total$" res)
+          (message (match-string 1 res))
+        (error "unexpected output %s" res))))
+
+  ;; open recent directory, requires ivy (part of swiper)
+  ;; borrows from http://stackoverflow.com/questions/23328037/in-emacs-how-to-maintain-a-list-of-recent-directories
+  (defun bjm/ivy-dired-recent-dirs ()
+    "Present a list of recently used directories and open the selected one in dired"
+    (interactive)
+    (let ((recent-dirs
+           (delete-dups
+            (mapcar (lambda (file)
+                      (if (file-directory-p file) file (file-name-directory file)))
+                    recentf-list))))
+
+      (let ((dir (ivy-read "Directory: "
+                           recent-dirs
+                           :re-builder #'ivy--regex
+                           :sort nil
+                           :initial-input nil)))
+        (dired dir))))
+
+  ;; set some programs to run externally
+  (setq dired-guess-shell-alist-user '(("\\.jpg\\'" "feh")
+                                       ("\\.png\\'" "feh")
+                                       ("\\.mp4\\'" "vlc")
+                                       ("\\.mkv\\'" "vlc")v
+                                       ("\\.pdf\\'" "zathura")))
+
+  (eval-after-load "recentf"
+    '(progn
+       (defun recentf-track-opened-file ()
+         "Insert the name of the dired or file just opened or written into the recent list."
+         (let ((buff-name (or buffer-file-name (and (derived-mode-p 'dired-mode) default-directory))))
+           (and buff-name
+                (recentf-add-file buff-name)))
+         ;; Must return nil because it is run from `write-file-functions'.
+         nil)
+
+       (defun recentf-track-closed-file ()
+         "Update the recent list when a file or dired buffer is killed.
+  That is, remove a non kept file from the recent list."
+         (let ((buff-name (or buffer-file-name (and (derived-mode-p 'dired-mode) default-directory))))
+           (and buff-name
+                (recentf-remove-if-non-kept buff-name))))
+       (add-hook 'dired-after-readin-hook 'recentf-track-opened-file)))
+
+  ;; use the same buffer for going up a directory in dired
+  (defun rag/dired-up-dir()
+    (interactive) (find-alternate-file ".."))
+
+  ;; https://oremacs.com/2017/03/18/dired-ediff/
+  (defun ora-ediff-files ()
+    (interactive)
+    (let ((files (dired-get-marked-files))
+          (wnd (current-window-configuration)))
+      (if (<= (length files) 2)
+          (let ((file1 (car files))
+                (file2 (if (cdr files)
+                           (cadr files)
+                         (read-file-name "file: "
+                                         (dired-dwim-target-directory)))))
+            (when (file-newer-than-file-p file1 file2)
+              (cl-rotatef file1 file2))
+            (if (string-match "current ar archive" (shell-command-to-string (format "file %s" file1)))
+                (async-shell-command
+                 (format "hexdump-diffuse %s %s"
+                         (shell-quote-argument file1)
+                         (shell-quote-argument file2)))
+              (ediff-files file1 file2)
+              (add-hook 'ediff-after-quit-hook-internal
+                        (lambda ()
+                          (setq ediff-after-quit-hook-internal nil)
+                          (set-window-configuration wnd)))))
+        (error "no more than 2 files should be marked")))
+
+    (setq dired-garbage-files-regexp
+          "\\.idx\\|\\.run\\.xml$\\|\\.bbl$\\|\\.bcf$\\|.blg$\\|-blx.bib$\\|.nav$\\|.snm$\\|.out$\\|.synctex.gz$\\|\\(?:\\.\\(?:aux\\|bak\\|dvi\\|log\\|orig\\|rej\\|toc\\|pyg\\)\\)\\'"))
 
   ;; dired-x: to hide uninteresting files in dired
   (use-package dired-x :ensure nil
+    :demand t
+    :hook ((dired-mode . dired-omit-mode))
     :config
     (setq dired-omit-verbose nil)
     ;; hide backup, autosave, *.*~ files
     ;; omit mode can be toggled using `C-x M-o' in dired buffer.
-    (add-hook 'dired-mode-hook #'dired-omit-mode)
     (setq dired-omit-files
           (concat dired-omit-files "\\|^.DS_STORE$\\|^.projectile$\\|^.git$"))))
 
-;; dired+: extensions for `dired-mode'
-;; https://www.emacswiki.org/emacs/DiredPlus
-(use-package dired+
-  :config
-  (require 'dired+)
-  ;; reuse dired directories instead of opening a thousand `dired' buffers
-  (diredp-toggle-find-file-reuse-dir 1)
+;; diredfl:Extra Emacs font lock rules for a more colourful dired
+;; https://github.com/purcell/diredfl/tree/085eabf2e70590ec8e31c1e66931d652d8eab432
+(use-package diredfl
+  :config (diredfl-global-mode))
 
-  ;; show more details by default
-  (setq diredp-hide-details-initially-flag nil)
-  (setq diredp-hide-details-propagate-flag nil)
+(use-package wdired :defer t
+  :ensure nil
+  :config (setq wdired-allow-to-change-permissions t))
 
-  ;; rewise multiple open files so that it only opens one window
-  (define-key dired-mode-map (kbd "F")
-    (lambda ()
-      (interactive)
-      (mapc #'find-file (reverse (dired-get-marked-files))))))
-
-;; dired-collapse: collapse unique nested paths in dired listing
-;; https://github.com/Fuco1/dired-hacks#dired-collapse
-(use-package dired-collapse
-  :config
-  (add-hook 'dired-mode-hook 'dired-collapse-mode))
-
-(require 'dired-aux)
-
-(defalias 'dired-do-create-files 'lawlist-dired-do-create-files)
-
-(defun lawlist-dired-do-create-files (op-symbol file-creator operation arg
-                                                &optional marker-char op1 how-to)
-  "(1) If the path entered by the user in the mini-buffer ends in a trailing
-forward slash /, then the code assumes the path is a directory -- to be
-created if it does not already exist.; (2) if the trailing forward slash
-is omitted, the code prompts the user to specify whether that path is a
-directory."
-  (or op1 (setq op1 operation))
-  (let* (
-         skip-overwrite-confirmation
-         (fn-list (dired-get-marked-files nil arg))
-         (rfn-list (mapcar (function dired-make-relative) fn-list))
-         (dired-one-file  ; fluid variable inside dired-create-files
-          (and (consp fn-list) (null (cdr fn-list)) (car fn-list)))
-         (target-dir
-          (if dired-one-file
-              (dired-get-file-for-visit) ;; filename if one file
-            (dired-dwim-target-directory))) ;; directory of multiple files
-         (default (and dired-one-file
-                       (expand-file-name (file-name-nondirectory (car fn-list))
-                                         target-dir)) )
-         (defaults (dired-dwim-target-defaults fn-list target-dir))
-         (target (expand-file-name ; fluid variable inside dired-create-files
-                  (minibuffer-with-setup-hook (lambda ()
-                                                (set (make-local-variable 'minibuffer-default-add-function) nil)
-                                                (setq minibuffer-default defaults))
-                    (dired-mark-read-file-name
-                     (concat (if dired-one-file op1 operation) " %s to: ")
-                     target-dir op-symbol arg rfn-list default))))
-         (unmodified-initial-target target)
-         (into-dir (cond ((null how-to)
-                          (if (and (memq system-type '(ms-dos windows-nt cygwin))
-                                   (eq op-symbol 'move)
-                                   dired-one-file
-                                   (string= (downcase
-                                             (expand-file-name (car fn-list)))
-                                            (downcase
-                                             (expand-file-name target)))
-                                   (not (string=
-                                         (file-name-nondirectory (car fn-list))
-                                         (file-name-nondirectory target))))
-                              nil
-                            (file-directory-p target)))
-                         ((eq how-to t) nil)
-                         (t (funcall how-to target)))))
-    (if (and (consp into-dir) (functionp (car into-dir)))
-        (apply (car into-dir) operation rfn-list fn-list target (cdr into-dir))
-      (or into-dir (setq target (directory-file-name target)))
-      ;; create new directories if they do not exist.
-      (when
-          (and
-           (not (file-directory-p (file-name-directory target)))
-           (file-exists-p (directory-file-name (file-name-directory target))))
-        (let ((debug-on-quit nil))
-          (signal 'quit `(
-                          "A file with the same name as the proposed directory already
-exists."))))
-      (when
-          (and
-           (not (file-exists-p (directory-file-name (expand-file-name
-                                                     target))))
-           (or
-            (and
-             (null dired-one-file)
-             (not (string-match "\\(.*\\)\\(/$\\)"
-                                unmodified-initial-target)))
-            (not (file-directory-p (file-name-directory target)))
-            (string-match "\\(.*\\)\\(/$\\)" unmodified-initial-target)) )
-        (let* (
-               new
-               list-of-directories
-               list-of-shortened-directories
-               string-of-directories-a
-               string-of-directories-b
-               (max-mini-window-height 3)
-               (expanded (directory-file-name (expand-file-name target)))
-               (try expanded) )
-          ;; Find the topmost nonexistent parent dir (variable `new')
-          (while (and try (not (file-exists-p try)) (not (equal new try)))
-            (push try list-of-directories)
-            (setq new try
-                  try (directory-file-name (file-name-directory try))))
-          (setq list-of-shortened-directories
-                (mapcar
-                 (lambda (x) (concat "..." (car (cdr (split-string x try)))))
-                 list-of-directories))
-          (setq string-of-directories-a
-                (combine-and-quote-strings list-of-shortened-directories))
-          (setq string-of-directories-b (combine-and-quote-strings
-                                         (delete (car (last list-of-shortened-directories))
-                                                 list-of-shortened-directories)))
-          (if
-              (and
-               (not (string-match "\\(.*\\)\\(/$\\)"
-                                  unmodified-initial-target))
-               ;; (cdr list-of-directories)
-               dired-one-file
-               (file-exists-p dired-one-file)
-               (not (file-directory-p dired-one-file)))
-              (if (y-or-n-p
-                   (format "Is `%s` a directory?" (car (last
-                                                        list-of-directories))))
-                  (progn
-                    (or (y-or-n-p (format "@ `%s`, create:  %s" try
-                                          string-of-directories-a))
-                        (let ((debug-on-quit nil))
-                          (signal 'quit `("You have exited the function."))))
-                    (make-directory expanded t)
-                    (setq into-dir t))
-                (if (equal (file-name-directory target) (file-name-directory
-                                                         dired-one-file))
-                    (setq new nil)
-                  (or (y-or-n-p
-                       (format "@ `%s`, create:  %s" try
-                               string-of-directories-b))
-                      (let ((debug-on-quit nil))
-                        (signal 'quit `("You have exited the function."))))
-                  (make-directory (car (split-string
-                                        (car (last list-of-directories))
-                                        (concat "/" (file-name-nondirectory target)))) t)
-                  (setq target (file-name-directory target))
-                  (setq into-dir t) ))
-            (or (y-or-n-p (format "@ `%s`, create:  %s" try
-                                  string-of-directories-a))
-                (let ((debug-on-quit nil))
-                  (signal 'quit `("You have exited the function."))))
-            (make-directory expanded t)
-            (setq into-dir t) )
-          (when new
-            (dired-add-file new)
-            (dired-move-to-filename))
-          (setq skip-overwrite-confirmation t) ))
-      (lawlist-dired-create-files file-creator operation fn-list
-                                  (if into-dir      ; target is a directory
-                                      (function (lambda (from)
-                                                  (expand-file-name (file-name-nondirectory from) target)))
-                                    (function (lambda (_from) target)))
-                                  marker-char skip-overwrite-confirmation ))))
-
-(defun lawlist-dired-create-files (file-creator operation fn-list
-                                                name-constructor
-                                                &optional marker-char skip-overwrite-confirmation)
-  (let (dired-create-files-failures failures
-                                    skipped (success-count 0) (total (length fn-list)))
-    (let (to overwrite-query overwrite-backup-query)
-      (dolist (from fn-list)
-        (setq to (funcall name-constructor from))
-        (if (equal to from)
-            (progn
-              (setq to nil)
-              (dired-log "Cannot %s to same file: %s\n"
-                         (downcase operation) from)))
-        (if (not to)
-            (setq skipped (cons (dired-make-relative from) skipped))
-          (let* ((overwrite (file-exists-p to))
-                 (dired-overwrite-confirmed ; for dired-handle-overwrite
-                  (and overwrite (not skip-overwrite-confirmation)
-                       (let ((help-form '(format "\
-Type SPC or `y' to overwrite file `%s',
-DEL or `n' to skip to next,
-ESC or `q' to not overwrite any of the remaining files,
-`!' to overwrite all remaining files with no more questions." to)))
-                         (dired-query 'overwrite-query
-                                      "Overwrite `%s'?" to))))
-                 ;; must determine if FROM is marked before file-creator
-                 ;; gets a chance to delete it (in case of a move).
-                 (actual-marker-char
-                  (cond  ((integerp marker-char) marker-char)
-                         (marker-char (dired-file-marker from)) ; slow
-                         (t nil))))
-            (let ((destname (file-name-directory to)))
-              (when (and (file-directory-p from)
-                         (file-directory-p to)
-                         (eq file-creator 'dired-copy-file))
-                (setq to destname))
-              ;; If DESTNAME is a subdirectory of FROM, not a symlink,
-              ;; and the method in use is copying, signal an error.
-              (and (eq t (car (file-attributes destname)))
-                   (eq file-creator 'dired-copy-file)
-                   (file-in-directory-p destname from)
-                   (error "Cannot copy `%s' into its subdirectory `%s'"
-                          from to)))
-            (condition-case err
-                (progn
-                  (funcall file-creator from to dired-overwrite-confirmed)
-                  (if overwrite
-                      ;; If we get here, file-creator hasn't been aborted
-                      ;; and the old entry (if any) has to be deleted
-                      ;; before adding the new entry.
-                      (dired-remove-file to))
-                  (setq success-count (1+ success-count))
-                  (message "%s: %d of %d" operation success-count total)
-                  (dired-add-file to actual-marker-char))
-              (file-error    ; FILE-CREATOR aborted
-               (progn
-                 (push (dired-make-relative from)
-                       failures)
-                 (dired-log "%s `%s' to `%s' failed:\n%s\n"
-                            operation from to err))))))))
-    (cond
-     (dired-create-files-failures
-      (setq failures (nconc failures dired-create-files-failures))
-      (dired-log-summary
-       (format "%s failed for %d file%s in %d requests"
-               operation (length failures)
-               (dired-plural-s (length failures))
-               total)
-       failures))
-     (failures
-      (dired-log-summary
-       (format "%s failed for %d of %d file%s"
-               operation (length failures)
-               total (dired-plural-s total))
-       failures))
-     (skipped
-      (dired-log-summary
-       (format "%s: %d of %d file%s skipped"
-               operation (length skipped) total
-               (dired-plural-s total))
-       skipped))
-     (t
-      (message "%s: %s file%s"
-               operation success-count (dired-plural-s success-count)))))
-  (dired-move-to-filename))
-
-;; https://oremacs.com/2017/03/18/dired-ediff/
-(defun ora-ediff-files ()
-  (interactive)
-  (let ((files (dired-get-marked-files))
-        (wnd (current-window-configuration)))
-    (if (<= (length files) 2)
-        (let ((file1 (car files))
-              (file2 (if (cdr files)
-                         (cadr files)
-                       (read-file-name
-                        "file: "
-                        (dired-dwim-target-directory)))))
-          (if (file-newer-than-file-p file1 file2)
-              (ediff-files file2 file1)
-            (ediff-files file1 file2))
-          (add-hook 'ediff-after-quit-hook-internal
-                    (lambda ()
-                      (setq ediff-after-quit-hook-internal nil)
-                      (set-window-configuration wnd))))
-      (error "no more than 2 files should be marked"))))
-(define-key dired-mode-map "E" 'ora-ediff-files)
+;; dired-quick-sort: hydra to sort files in dired
+;; Press `S' to invoke dired-quick-sort hydra
+;; https://gitlab.com/xuhdev/dired-quick-sort
+(use-package dired-quick-sort
+  :bind (:map dired-mode-map
+              ("s" . hydra-dired-quick-sort/body)))
 
 (provide 'setup-dired)

@@ -1,27 +1,26 @@
-;; Time-stamp: <2017-04-27 11:59:37 csraghunandan>
+;;; setup-abbrev.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2018-08-15 02:38:14 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;; abbrev: expand abbreviations
 (use-package abbrev :ensure nil
-  :diminish abbrev-mode
+  :hook
+  ((prog-mode org-mode text-mode erc-mode LaTeX-mode) . abbrev-mode)
+  (expand-load
+   . (lambda ()
+       (add-hook 'expand-expand-hook 'indent-according-to-mode)
+       (add-hook 'expand-jump-hook 'indent-according-to-mode)))
+  :bind*
+  ("C-;" . endless/ispell-word-then-abbrev)
   :config
   ;; Silently save abbrevs on quitting emacs
   (setq save-abbrevs 'silently)
 
-  (defconst rag/abbrev-hooks '(prog-mode-hook
-                               org-mode-hook
-                               text-mode-hook
-                               erc-mode-hook)
-    "List of hooks of major modes in which abbrev should be enabled.")
-
-  (defun rag/turn-on-abbrev ()
-    "Turn on abbrev only for specific modes"
-    (interactive)
-    (dolist (hook rag/abbrev-hooks)
-      (add-hook hook #'abbrev-mode)))
-  (rag/turn-on-abbrev)
-
   ;;Read the abbreviations file on startup
-  (quietly-read-abbrev-file)
+  (if (file-exists-p abbrev-file-name)
+      (quietly-read-abbrev-file))
 
   (defun endless/simple-get-word ()
     (car-safe (save-excursion (ispell-get-word nil))))
@@ -57,8 +56,6 @@ abort completely with `C-g'."
               bef aft)
             (message "\"%s\" now expands to \"%s\" %sally"
                      bef aft (if p "loc" "glob")))
-        (user-error "No typo at or before point"))))
-
-  (bind-key* "C-;" 'endless/ispell-word-then-abbrev))
+        (user-error "No typo at or before point")))))
 
 (provide 'setup-abbrev)

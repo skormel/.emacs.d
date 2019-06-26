@@ -1,7 +1,12 @@
-;; Time-stamp: <2017-06-27 18:59:17 csraghunandan>
+;;; setup-ibuffer.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2018-12-13 21:43:01 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;; ibuffer: for easy management of buffers
 (use-package ibuffer
+  :ensure nil
   :config
 
   ;; ibuffer-vc: show version control info in ibuffer
@@ -45,7 +50,7 @@
                   " "
                   (mode 16 16 :left :elide)
                   " "
-                  filename-and-process))))
+                  vc-relative-file))))
 
   ;; Don't show scratch and messages in iBuffer
   (require 'ibuf-ext)
@@ -55,9 +60,7 @@
   ;; hide filter groups which are empty
   (setq ibuffer-show-empty-filter-groups nil)
 
-  (>=e "26"
-      (bind-key "C-x C-b" #'ibuffer-jump)
-    (bind-key* "C-x C-b" #'ibuffer))
+  (bind-key "C-x C-b" #'ibuffer-jump)
 
   (defhydra hydra-ibuffer-main (:color pink :hint nil)
     "

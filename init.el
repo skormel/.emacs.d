@@ -1,14 +1,28 @@
-;; Time-stamp: <2017-12-02 15:09:50 csraghunandan>
-;; Author: C S Raghunandan
+;;; init.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2019-04-07 18:34:33 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
+
+;; Every file opened and loaded by Emacs will run through this list to check for
+;; a proper handler for the file, but during startup, it won’t need any of them.
+(defvar rag--file-name-handler-alist file-name-handler-alist)
 
 ;; https://www.reddit.com/r/emacs/comments/3kqt6e/2_easy_little_known_steps_to_speed_up_emacs_start/
 (defvar gc-cons-threshold--orig gc-cons-threshold)
-(setq gc-cons-threshold (* 100 1024 1024))
+(setq gc-cons-threshold (* 100 1024 1024)
+      gc-cons-percentage 0.6
+      file-name-handler-alist nil)
+
+(defun rag-set-gc-threshold ()
+  "Reset `gc-cons-threshold' and `gc-cons-percentage' to their default values."
+  (setq gc-cons-threshold gc-cons-threshold--orig
+        gc-cons-percentage 0.1
+        file-name-handler-alist rag--file-name-handler-alist))
 
 (require 'package)
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/"))
-(add-to-list 'package-archives '("org" . "http://orgmode.org/elpa/") t)
-(package-initialize)
+(add-to-list 'package-archives '("org" . "https://orgmode.org/elpa/") t)
 
 ;; load directory for configuration files for emacs
 (add-to-list 'load-path (concat user-emacs-directory "setup-files/"))
@@ -23,21 +37,15 @@
 (load custom-file :noerror :nomessage) ; load custom-file silently
 (load (locate-user-emacs-file "general.el") nil :nomessage)
 
+;; run package-initialize if running emacs version < 27
+(>=e "27.0"
+    nil
+  (package-initialize))
+
 
 
-(unless (package-installed-p 'use-package) ; unless it is already installed
-  (package-refresh-contents) ; updage packages archive
-  (package-install 'use-package)) ; install the latest version of use-package
-(eval-when-compile (require 'use-package))
-(setq use-package-always-ensure t)
-
-;; add imenu support for use-package declarations
-(setq use-package-enable-imenu-support t)
-
-;; diminish-mode: to hide minor modes in mode-line
-;; https://github.com/emacsmirror/diminish
-(use-package diminish
-  :ensure t)
+;; load all use-package related configuration
+(load (locate-user-emacs-file "setup-packages.el") nil :nomessage)
 
 (require 'setup-osx)
 (require 'setup-org)
@@ -45,6 +53,7 @@
 (require 'setup-selected)
 (require 'setup-treemacs)
 (require 'setup-search)
+(require 'setup-rg)
 (require 'setup-ibuffer)
 (require 'setup-recentf)
 (require 'setup-desktop)
@@ -52,7 +61,8 @@
 (require 'setup-ediff)
 (require 'setup-dired)
 (require 'setup-elisp-mode)
-(require 'setup-fly)
+(require 'setup-flycheck)
+(require 'setup-spell)
 (require 'setup-bookmark)
 (require 'setup-hydra)
 (require 'setup-company)
@@ -73,8 +83,8 @@
 (require 'setup-mode-line)
 (require 'setup-editing)
 (require 'setup-racket)
-(require 'setup-hungry-delete)
 (require 'setup-rust)
+(require 'setup-lsp)
 (require 'setup-cc)
 (require 'setup-haskell)
 (require 'setup-python)
@@ -104,7 +114,7 @@
 (require 'setup-minibuffer)
 (require 'setup-purescript)
 (require 'setup-abbrev)
-(require 'setup-quickrun)
+(require 'setup-compile)
 (require 'setup-macro)
 (require 'setup-help)
 (require 'setup-tldr)
@@ -112,8 +122,10 @@
 (require 'setup-shell)
 (require 'setup-smerge)
 (require 'setup-nov)
-(require 'xkcd)
+(require 'setup-xkcd)
 (require 'setup-docker)
+(require 'setup-pdf)
+(require 'setup-engine-mode)
 
 ;; install all packages (if they already not installed by use-package)
 (package-install-selected-packages)
@@ -125,6 +137,6 @@
 (unless (server-running-p) (server-start))
 
 ;; set gc-cons-threshold back to original value
-(setq gc-cons-threshold gc-cons-threshold--orig)
+(add-hook 'emacs-startup-hook #'rag-set-gc-threshold)
 
 ;;; init.el ends here

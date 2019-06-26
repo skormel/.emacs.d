@@ -1,10 +1,16 @@
-;; Time-stamp: <2017-12-12 15:41:05 csraghunandan>
+;;; setup-projectile.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2018-11-24 18:57:21 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;; Projectile: Project Interaction Library for Emacs
 ;; https://github.com/bbatsov/projectile
-(use-package projectile
-  :diminish projectile-mode
+(use-package projectile :defer 1
   :config
+  ;; Set the projectile-prefix-command binding
+  (bind-key "C-c p" 'projectile-command-map projectile-mode-map)
+
   (setq projectile-completion-system 'ivy
         projectile-enable-caching t)
 
@@ -17,31 +23,16 @@
     (f-descendant-of? project-root (expand-file-name "~/exercism")))
   (setq projectile-ignored-project-function #'my-projectile-ignore-project)
 
-
+  ;; ignore some common files for projectile
+  (setq projectile-globally-ignored-file-suffixes '(".elc" ".pyc" ".o")
+        projectile-globally-ignored-files '(".DS_Store" "Icon" "TAGS"))
 
-;;; Default rg arguments
-  ;; https://github.com/BurntSushi/ripgrep
-  (when (executable-find "rg")
-    (progn
-      (defconst modi/rg-arguments
-        `("--line-number" ; line numbers
-          "--smart-case"
-          "--follow" ; follow symlinks
-          "--max-columns 150"        ;Emacs doesn't handle long line lengths very well
-          "--mmap") ; apply memory map optimization when possible
-        "Default rg arguments used in the functions in `projectile' package.")
+  ;; include the project root directory in projectile-find-dir list
+  (setq projectile-find-dir-includes-top-level t)
 
-      (defun modi/advice-projectile-use-rg ()
-        "Always use `rg' for getting a list of all files in the project."
-        (mapconcat 'identity
-                   (append '("\\rg") ; used unaliased version of `rg': \rg
-                           modi/rg-arguments
-                           '("--null" ; output null separated results,
-                             "--files")) ; get file names matching the regex '' (all files)
-                   " "))
+  ;; use turbo indexing method for proectile
+  (setq projectile-indexing-method 'alien)
 
-      (advice-add 'projectile-get-ext-command
-                  :override #'modi/advice-projectile-use-rg)))
 
 
   ;; Make the file list creation faster by NOT calling `projectile-get-sub-projects-files'
@@ -105,66 +96,16 @@ files in Fundamental mode."
 
   (bind-keys
    ("C-c p K" . modi/kill-non-project-buffers)
-   ("C-c h p" . hydra-projectile/body)
-   ("C-c p r" . projectile-replace-regexp))
+   ("C-c p r" . projectile-replace-regexp)
+   ("C-c s m" . modi/projectile-switch-project-magit-status))
 
 
-
-  (defhydra hydra-projectile-other-window (:color teal)
-    "projectile-other-window"
-    ("f" projectile-find-file-other-window "file")
-    ("g" projectile-find-file-dwim-other-window "file dwim")
-    ("d" projectile-find-dir-other-window "dir")
-    ("b" projectile-switch-to-buffer-other-window "buffer")
-    ("q" nil "cancel" :color blue))
 
   (defun modi/projectile-switch-project-magit-status ()
     "Switch to other project and open Magit status there."
     (interactive)
     (let ((projectile-switch-project-action #'magit-status))
       (call-interactively #'projectile-switch-project)))
-
-  (defhydra hydra-projectile (:color teal
-                                     :hint  nil)
-    "
-     PROJECTILE: %(if (fboundp 'projectile-project-root) (projectile-project-root) \"TBD\")
-^^^^       Find               ^^   Search/Tags       ^^^^       Buffers               ^^   Cache                     ^^^^       Other
-^^^^--------------------------^^---------------------^^^^-----------------------------^^------------------------------------------------------------------
-^^    _f_: file               _r_: counsel-rg        ^^    _i_: Ibuffer               _c_: cache clear               ^^    _E_: edit project's .dir-locals.el
-^^    _F_: file dwim          _g_: update gtags      ^^    _b_: switch to buffer      _x_: remove known project      ^^    _p_: switch to any other project
-^^    _d_: file curr dir      _o_: multi-occur       ^^    _K_: kill all buffers      _X_: cleanup non-existing      ^^    _P_: switch to an open project
-^^    _R_: recent file        _G_: git-grep          ^^    _Q_: replace regexp        _z_: cache current             ^^    _S_: switch to magit status other project
-^^    _D_: dir                                       ^^^^                             _l_: file literally
-"
-    ("r" counsel-rg)
-    ("G" counsel-git-grep)
-    ("b" projectile-switch-to-buffer)
-    ("c" projectile-invalidate-cache)
-    ("d" projectile-find-file-in-directory)
-    ("f" projectile-find-file)
-    ("f" projectile-find-file)
-    ("F" projectile-find-file-dwim)
-    ("D" projectile-find-dir)
-    ("E" projectile-edit-dir-locals)
-    ("g" ggtags-update-tags)
-    ("S" modi/projectile-switch-project-magit-status)
-    ("i" projectile-ibuffer)
-    ("K" projectile-kill-buffers)
-    ("k" projectile-kill-buffers)
-    ("m" projectile-multi-occur)
-    ("o" projectile-multi-occur)
-    ("p" projectile-switch-project)
-    ("p" projectile-switch-project)
-    ("l"   modi/projectile-find-file-literally)
-    ("P" projectile-switch-open-project)
-    ("s" projectile-switch-project)
-    ("R" projectile-recentf)
-    ("x" projectile-remove-known-project)
-    ("X" projectile-cleanup-known-projects)
-    ("z" projectile-cache-current-file)
-    ("4" hydra-projectile-other-window/body "other window")
-    ("Q" projectile-replace-regexp)
-    ("q" nil "cancel" :color blue))
 
   (projectile-mode))
 
@@ -173,12 +114,15 @@ files in Fundamental mode."
 ;; projectile
 ;; This configuration uses `rg'(ripgrep) to generate the project list
 ;; * to clear the cache when searching for files in a project, prefix
-;;   `projectile-find-file' with `C-u'.
-;; * use `projectile-ibuffer' [C-c p I] to open `ibuffer' for the current project only
-;; * use `projectile-kill-buffers' [C-c p k] to kill all buffers related to a project
-;; * use `projectile-recentf' [C-c p e] to list all recently opened file in a project
-;; * use `projectile-switch-open-project' [C-c p q] to switch to an open project
-;; * use `projectile-replace-regexp' [C-c Q] to replace regexp in the project
-;; * use `projectile-find-dir' to select all the directories in a project
-;; * use `projectile-dired' to open the dired buffer of project root
-;; * run `C-c p h' to open the hydra for projectile
+;;   `counsel-projectile-find-file' with `C-u'.
+;; * `projectile-ibuffer' [C-c p I] to open `ibuffer' for the current project only
+;; * `projectile-kill-buffers' [C-c p k] to kill all buffers related to a project
+;; * `projectile-recentf' [C-c p e] to list all recently opened file in a project
+;; * `projectile-switch-open-project' [C-c p q] to switch to an open project
+;; * `projectile-replace-regexp' [C-c Q] to replace regexp in the project
+;; * `counsel-projectile-switch-to-buffer' [C-c p b] to open any open buffers for current project
+;; * `counsel-projectile-find-dir' [C-c p d] to find all the directories in a project
+;; * `counsel-projectile-find-file-dwim' [C-c p g] for dwim find file
+;; * `projectile-dired' [C-c p d] to open the dired buffer of project root
+;; * `projectile-edit-dir-locals' [C-c p E] -> to edit the .dirlocals of the project
+;; * `projectile-find-file-in-known-projects' [C-c p F] -> to find file in all known projects

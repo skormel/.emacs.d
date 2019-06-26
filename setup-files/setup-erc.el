@@ -1,7 +1,14 @@
-;; Time-stamp: <2017-12-03 13:01:49 csraghunandan>
+;;; setup-erc.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2018-08-15 02:56:16 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;; ERC: the irc client for emacs
-(use-package erc :defer t
+(use-package erc
+  :ensure nil
+  :bind (("C-c e" . my/erc-start-or-switch))
+  :hook ((erc-send-pre . my/erc-preprocess))
   :config
   ;; don't show messages when a users quits or joins
   (setq erc-hide-list '("PART" "QUIT" "JOIN"))
@@ -55,7 +62,41 @@
   ;; use sensible names for irc buffers
   (setq erc-rename-buffers t)
   ;; Interpret mIRC-style color commands in IRC chats
-  (setq erc-interpret-mirc-color t))
+  (setq erc-interpret-mirc-color t)
+
+  (setq erc-autojoin-timing 'ident)
+  (setq erc-fill-function 'erc-fill-static)
+  (setq erc-fill-static-center 22)
+
+  ;; hide messsages when lurkers join or quit
+  (setq erc-lurker-hide-list (quote ("JOIN" "PART" "QUIT")))
+  (setq erc-lurker-threshold-time 43200)
+
+  (defun my/erc-preprocess (string)
+    "Avoids channel flooding."
+    (setq str
+	      (string-trim
+	       (replace-regexp-in-string "\n+" " " str))))
+
+  (defun my/erc-start-or-switch ()
+    "Connects to ERC, or switch to last active buffer."
+    (interactive)
+    (if (get-buffer "irc.freenode.net:6667")
+	    (erc-track-switch-buffer 1)
+	  (when (y-or-n-p "Start ERC? ")
+	    (erc :server "irc.freenode.net" :port 6667 :nick "rememberYou"))))
+
+  (defun my/erc-count-users ()
+    "Displays the number of users connected on the current channel."
+    (interactive)
+    (if (get-buffer "irc.freenode.net:6667")
+	    (let ((channel (erc-default-target)))
+	      (if (and channel (erc-channel-p channel))
+		      (message "%d users are online on %s"
+			           (hash-table-count erc-channel-users)
+			           channel)
+	        (user-error "The current buffer is not a channel")))
+	  (user-error "You must first start ERC"))))
 
 ;; erc-image: Fetch and show received images in a ERC buffer
 ;; https://github.com/kidd/erc-image.el
@@ -64,6 +105,11 @@
   :config
   (add-to-list 'erc-modules 'image)
   (erc-update-modules))
+
+;; erc-hl-nicks: Nickname Highlighting for ERC
+;; https://github.com/leathekd/erc-hl-nicks/tree/master
+(use-package erc-hl-nicks
+  :after erc)
 
 (provide 'setup-erc)
 

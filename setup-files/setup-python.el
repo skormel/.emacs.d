@@ -1,69 +1,36 @@
-;; Time-stamp: <2017-11-08 20:54:26 csraghunandan>
+;;; setup-python.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2019-05-24 15:38:45 csraghunandan>
 
-;; Python configuration
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
+
 (use-package python
-  :bind (:map python-mode-map
-              (("C-c C-t" . anaconda-mode-show-doc)
-               ("M-." . anaconda-mode-find-definitions)
-               ("M-," . anaconda-mode-go-back-definitions)))
+  :ensure nil
+  :hook ((python-mode . (lambda ()
+                          (lsp)
+                          (lsp-ui-mode)
+                          (eldoc-mode -1)
+                          (lsp-ui-sideline-mode)
+                          (lsp-ui-doc-mode)
+                          (flycheck-mode)
+                          (smart-dash-mode)
+                          (company-mode)
+                          (setq-local lsp-highlight-symbol-at-point nil)))
+         (python-mode . (lambda ()
+                          (setq-local tab-width 4)
+                          (setq-local lsp-pyls-plugins-pylint-enabled nil)
+                          (setq-local lsp-pyls-plugins-rope-completion-enabled nil)))
+         (inferior-python-mode . company-mode))
   :config
   ;; don't try to guess python indent offset
   (setq python-indent-guess-indent-offset nil)
+  (setq python-shell-completion-native-enable nil)
 
-  (add-hook 'python-mode-hook (lambda ()
-                                (company-mode)
-                                (smart-dash-mode)
-                                (flycheck-mode)
-                                (page-break-lines-mode)))
-  ;; enable company-mode completions in inferior python process
-  (add-hook 'inferior-python-mode-hook 'company-mode)
-
-  ;; anaconda-mode: bring IDE like features for python-mode
-  ;; https://github.com/proofit404/anaconda-mode
-  (use-package anaconda-mode
-    :diminish (anaconda-mode . "𝐀𝐧")
-    :config
-    (add-hook 'python-mode-hook 'anaconda-mode)
-    (add-hook 'python-mode-hook 'anaconda-eldoc-mode))
-
-  ;; pyenv: Python virtual environment interface for Emacs
-  ;; https://github.com/jorgenschaefer/pyvenv
-  (use-package pyvenv)
-
-  ;; pyenv-mode: Integrate pyenv with python-mode.
-  ;; https://github.com/proofit404/pyenv-mode
-  (use-package pyenv-mode
-    :if (executable-find "pyenv")
-    :config
-    (add-hook 'python-mode-hook 'pyenv-mode)
-
-    ;; integrate pyenv with projectile
-    (defun projectile-pyenv-mode-set ()
-      "Set pyenv version matching project name."
-      (let ((project (projectile-project-name)))
-        (if (member project (pyenv-mode-versions))
-            (pyenv-mode-set project)
-          (pyenv-mode-unset))))
-
-    (add-hook 'projectile-switch-project-hook 'projectile-pyenv-mode-set))
-
-  ;; company-anaconda: company backend for anaconda
-  ;; https://github.com/proofit404/company-anaconda
-  (use-package company-anaconda
-    :config
-    (defun my-anaconda-mode-hook ()
-      "Hook for `web-mode'."
-      (set (make-local-variable 'company-backends)
-           '((company-anaconda company-files company-yasnippet))))
-    (add-hook 'python-mode-hook 'my-anaconda-mode-hook))
-
-  ;; pytest: for testing python code
-  ;; https://github.com/ionrock/pytest-el
-  (use-package pytest :defer t)
-
-  ;; only install yapfify if yapf is installed
-  (use-package py-yapf
-    :if (executable-find "yapf"))
+  (defun my-python-mode-hook ()
+    (set (make-local-variable 'company-backends)
+         '((company-files :with company-yasnippet)
+           (company-dabbrev-code company-dabbrev))))
+  (add-hook 'python-mode-hook #'my-python-mode-hook)
 
   ;; from https://www.snip2code.com/Snippet/127022/Emacs-auto-remove-unused-import-statemen
   (defun python-remove-unused-imports()
@@ -77,42 +44,51 @@
           (revert-buffer t t t))
       (warn "python-mode: Cannot find autoflake executable, automatic removal of unused imports disabled")))
 
-  ;; py-isort: sort import statements in python buffers
-  ;; https://github.com/paetzke/py-isort.el
-  (use-package py-isort
-    :if (executable-find "isort")
-    :config
+  (when (executable-find "yapf")
     (add-hook 'python-mode-hook
               (lambda ()
                 (add-hook 'before-save-hook
                           (lambda ()
                             (time-stamp)
-                            (py-yapf-buffer)
-                            (py-isort-buffer)) nil t))))
+                            (lsp-format-buffer)) nil t)))))
 
-  ;; sphinx-doc: add sphinx-doc comments easily
-  ;; https://github.com/naiquevin/sphinx-doc.el
-  (use-package sphinx-doc
-    :diminish sphinx-doc-mode
-    :config (add-hook 'python-mode-hook 'sphinx-doc-mode))
+;; pytest: for testing python code
+;; https://github.com/ionrock/pytest-el
+(use-package pytest :defer t)
 
-  ;; pip-requirements: Major mode for editing pip requirements files
-  ;; https://github.com/Wilfred/pip-requirements.el
-  (use-package pip-requirements
-    :config
-    (add-hook 'pip-requirements-mode 'company-mode))
+;; pyenv-mode: Integrate pyenv with python-mode.
+;; https://github.com/proofit404/pyenv-mode
+(use-package pyenv-mode
+  :hook ((python-mode . pyenv-mode))
+  :config
+  ;; integrate pyenv with projectile
+  (defun projectile-pyenv-mode-set ()
+    "Set pyenv version matching project name."
+    (let ((project (projectile-project-name)))
+      (if (member project (pyenv-mode-versions))
+          (pyenv-mode-set project)
+        (pyenv-mode-unset))))
+  (add-hook 'projectile-switch-project-hook 'projectile-pyenv-mode-set))
 
-  ;; python-docstring: format and highlight syntax for python docstrings
-  ;; https://github.com/glyph/python-docstring-mode
-  (use-package python-docstring
-    :diminish python-docstring-mode
-    :config (add-hook 'python-mode-hook 'python-docstring-mode)))
+;; python-docstring: format and highlight syntax for python docstrings
+;; https://github.com/glyph/python-docstring-mode
+(use-package python-docstring
+  :hook ((python-mode . python-docstring-mode)))
+
+;; pip-requirements: Major mode for editing pip requirements files
+;; https://github.com/Wilfred/pip-requirements.el
+(use-package pip-requirements
+  :hook ((pip-requirements-mode . company-mode)))
+
+;; sphinx-doc: add sphinx-doc comments easily
+;; https://github.com/naiquevin/sphinx-doc.el
+;; to add sphinx-docs to a function, press `C-c M-d' on a function definition
+(use-package sphinx-doc
+  :hook ((python-mode . sphinx-doc-mode)))
 
 (provide 'setup-python)
 
-;; python anaconda-mode config
-;; `C-c C-t' to show documentation of the thing at point
-;; `M-.' to jump to the definition of a function
-;; `M-,' to jump back from definition of a function
-;; yapf will automatically format the buffer on save :)
-;; to add sphinx-docs to a function, press `C-c M-d' on a function definition
+;; to get all the functionalities of thepython language server, install using
+;; pip the below packages:
+;;   python-language-server, Jedi, Pyflakes, McCabe, pycodestyle,
+;;   pydocstyle, yapf, pyls-mypy, pyls-isort

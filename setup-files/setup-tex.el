@@ -1,4 +1,8 @@
-;; Time-stamp: <2017-04-27 12:03:11 csraghunandan>
+;;; setup-tex.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2018-08-15 03:09:09 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;; TODO: Add auctex configuration here
 ;; LaTeX

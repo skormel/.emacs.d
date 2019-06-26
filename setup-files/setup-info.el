@@ -1,9 +1,13 @@
-;; Time-stamp: <2017-12-03 13:06:28 csraghunandan>
+;;; setup-info.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2018-08-15 02:58:38 csraghunandan>
 
-;; info+: extend the standard `info.el' emacs library
-;; https://www.emacswiki.org/emacs/InfoPlus
-(use-package info+
-  :config (require 'info+))
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
+
+;; info-colors: Extra colors for Emacs info-mode
+;; https://github.com/ubolonton/info-colors/tree/a8ebb7b8efa314c08ea8110d8b1876afb562bb45
+(use-package info-colors
+  :config (add-hook 'Info-selection-hook 'info-colors-fontify-node))
 
 (defhydra hydra-info (:color blue
                       :hint nil)

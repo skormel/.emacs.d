@@ -1,9 +1,12 @@
-;; Timestamp: <2016-11-29 13:19:18>
+;;; setup-which-key.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2018-08-15 03:10:27 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;; which-key : show popup of keybindings starting with a prefix
 ;; https://github.com/justbur/emacs-which-key
 (use-package which-key
-  :diminish which-key-mode
   :config
   ;; make which-key popup to the right
   (which-key-setup-side-window-right)

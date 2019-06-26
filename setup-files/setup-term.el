@@ -1,9 +1,16 @@
-;; Time-stamp: <2017-08-22 20:01:37 csraghunandan>
+;;; setup-term.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2018-12-14 01:51:13 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;; multi-term: manage multiple terminal windows easily within emacs
-;; https://www.emacswiki.org/emacs/multi-term.el
+;; https://github.com/emacsorphanage/multi-term/tree/f954e4e18b0a035151d34852387e724d87a3316f
 (use-package multi-term
   :config
+  ;; Some userlike the cursor return to the position it was before I opened the
+  ;; dedicated terminal window.
+  (setq multi-term-dedicated-close-back-to-open-buffer-p t)
 
   (defun last-term-buffer (l)
     "Return most recently used term buffer."
@@ -27,46 +34,50 @@
               ("n" multi-term-next "Next")
               ("p" multi-term-prev "Prev")
               ("d" multi-term-dedicated-toggle "Dedicated terminal")
-              ("q" nil "Quit" :color blue)))
+              ("q" nil "Quit" :color blue))))
 
-  (use-package term
-    :config
+;; eterm-256color: Customizable 256 colors for emacs term and ansi-term
+;; https://github.com/dieggsy/eterm-256color
+(use-package eterm-256color :defer t
+  :hook ((term-mode . eterm-256color-mode)))
 
-    ;; bind-keys for term-mode
-    (setq term-bind-key-alist
-          '(("C-c C-c" . term-interrupt-subjob)
-            ("C-c C-e" . term-send-esc)
-            ("C-c C-j" . term-line-mode)
-            ("C-c C-k" . term-char-mode)
-            ("C-b"     . term-send-left)
-            ("C-f"     . term-send-right)
-            ("C-p"     . previous-line)
-            ("C-n"     . next-line)
-            ("C-s"     . swiper)
-            ("C-m"     . term-send-return)
-            ("C-y"     . term-paste)
-            ("M-f"     . term-send-forward-word)
-            ("M-b"     . term-send-backward-word)
-            ("C-h"     . term-send-backspace)
-            ("M-p"     . term-send-up)
-            ("M-n"     . term-send-down)
-            ("M-d"     . term-send-forward-kill-word)
-            ("C-M-h"   . term-send-backward-kill-word)
-            ("M-r"     . term-send-reverse-search-history)
-            ("M-,"     . term-send-raw)
-            ("M-." . comint-dynamic-complete)))
+(use-package term :ensure nil
+  :config
+  ;; bind-keys for term-mode
+  (setq term-bind-key-alist
+        '(("C-c C-c" . term-interrupt-subjob)
+          ("C-v" . scroll-up)
+          ("M-v" . scroll-down)
+          ("C-c C-e" . term-send-esc)
+          ("C-c C-j" . term-line-mode)
+          ("C-c C-k" . term-char-mode)
+          ("C-b"     . term-send-left)
+          ("C-f"     . term-send-right)
+          ("C-p"     . previous-line)
+          ("C-n"     . next-line)
+          ("C-s"     . swiper)
+          ("C-m"     . term-send-return)
+          ("C-y"     . term-paste)
+          ("M-f"     . term-send-forward-word)
+          ("M-b"     . term-send-backward-word)
+          ("M-p"     . term-send-up)
+          ("M-n"     . term-send-down)
+          ("M-d"     . term-send-forward-kill-word)
+          ("C-M-h"   . term-send-backward-kill-word)
+          ("M-r"     . term-send-reverse-search-history)
+          ("M-,"     . term-send-raw)
+          ("M-." . comint-dynamic-complete)))
 
-    ;; disable some unnecessary minor-modes in term-mode
-    (add-hook 'term-mode-hook (lambda ()
-                                (yas-minor-mode -1)
-                                (whole-line-or-region-local-mode -1)
-                                (setq-local global-hl-line-mode nil)
-                                (beacon-mode -1)
-                                (hungry-delete-mode -1)))
+  ;; disable some unnecessary minor-modes in term-mode
+  (add-hook 'term-mode-hook (lambda ()
+                              (yas-minor-mode -1)
+                              (whole-line-or-region-local-mode -1)
+                              (setq-local global-hl-line-mode nil)
+                              (hungry-delete-mode -1)))
 
-    (setq multi-term-buffer-name "term")
-
-    (setq multi-term-program "/bin/zsh")))
+  (setq multi-term-buffer-name "term")
+  (setq multi-term-program (getenv "SHELL")
+        multi-term-switch-after-close 'PREVIOUS))
 
 (provide 'setup-term)
 

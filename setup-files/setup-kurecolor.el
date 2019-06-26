@@ -1,4 +1,8 @@
-;; Time-stamp: <2017-02-12 13:46:46 csraghunandan>
+;;; setup-kruecolor.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2018-08-15 03:03:01 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;; Kurecolor: color editing goodies for Emacs
 ;; https://github.com/emacsfodder/kurecolor

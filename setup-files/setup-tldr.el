@@ -1,9 +1,13 @@
-;; Time-stamp: <2017-06-14 13:37:23 csraghunandan>
+;;; setup-tldr.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2018-08-15 03:09:19 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;; TLDR
 ;; https://github.com/tldr-pages/tldr
 ;; https://github.com/kuanyui/tldr.el
-(use-package tldr :ensure t
+(use-package tldr
   :bind (("C-x / t" . tldr)))
 
 ;; Related -- curl cheat.sh

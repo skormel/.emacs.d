@@ -1,12 +1,14 @@
-;; Time-stamp: <2017-09-10 14:41:32 csraghunandan>
+;;; setup-purescript.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2018-08-15 03:05:58 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;; configuration for purescript
 
 ;; purescript-mode: major mode for editing purescript files
 ;; https://github.com/dysinger/purescript-mode
 (use-package purescript-mode :defer t
-  :diminish (purescript-indentation-mode . "𝐈𝐧")
-  :diminish (psc-ide-mode . "𝐏-𝐈𝐃𝐄")
   :config
   (add-hook 'purescript-mode-hook 'turn-on-purescript-decl-scan)
 

@@ -1,9 +1,12 @@
-;; Time-stamp: <2017-12-07 17:26:04 csraghunandan>
+;;; setup-selected.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2018-08-15 03:07:48 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;; selected: Keymap for when region is active
 ;; https://github.com/Kungsgeten/selected.el
 (use-package selected
-  :diminish selected-minor-mode
   :bind (:map selected-keymap
               ("w" . kill-region)
               ("~" . hydra-change-case/body)

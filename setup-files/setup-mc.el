@@ -1,4 +1,8 @@
-;; Time-stamp: <2017-10-27 16:47:57 csraghunandan>
+;;; setup-mc.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2018-08-15 03:03:56 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;; multiple-cursors: Add multiple cursors support for emacs
 ;; https://github.com/magnars/multiple-cursors.el
@@ -22,9 +26,9 @@
               ("#" . mc/insert-numbers) ; use num prefix to set the starting number
               ("^" . mc/edit-beginnings-of-lines)
               ("$" . mc/edit-ends-of-lines))
+  :hook ((prog-mode . multiple-cursors-mode))
   :init
-  (setq mc/list-file (locate-user-emacs-file "mc-lists"))
-  (add-hook 'prog-mode-hook #'multiple-cursors-mode))
+  (setq mc/list-file (locate-user-emacs-file "mc-lists")))
 
 (provide 'setup-mc)
 

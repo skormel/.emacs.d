@@ -1,4 +1,8 @@
-;; Time-stamp: <2017-05-12 01:21:35 csraghunandan>
+;;; setup-macro.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2018-08-15 03:03:23 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;; hydra for macros in emacs
 (defhydra hydra-macro (:hint nil :color pink :pre

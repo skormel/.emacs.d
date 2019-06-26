@@ -1,12 +1,17 @@
-;; Time-stamp: <2017-02-08 11:19:20 csraghunandan>
+;;; setup-calc.el -*- lexical-binding: t; -*-
+;; Time-stamp: <2018-08-15 02:41:49 csraghunandan>
+
+;; Copyright (C) 2016-2018 Chakravarthy Raghunandan
+;; Author: Chakravarthy Raghunandan <rnraghunandan@gmail.com>
 
 ;; calc config
 (use-package calc
+  :ensure nil
   :bind (("C-x c" . calc)
-          ("C-x ," . quick-calc))
+         ("C-x ," . quick-calc))
   :config
   (setq calc-twos-complement-mode nil)
-  ;; Calculator output value format
-  (setq calc-float-format '(eng 4))) ; Engineering notation
+  ;; Engineering notation
+  (setq calc-float-format '(eng 4)))
 
 (provide 'setup-calc)
